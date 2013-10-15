@@ -21,11 +21,14 @@ namespace PrestoViewer
         SpriteFont font;
         Texture2D cMapTexture;
         Texture2D hMapTexture;
+        Texture2D paletteTexture;
         Vector2 cMapPos;
         Vector2 hMapPos;
+        Vector2 palettePos;
         Vector2 spritePos;
         Vector2 spriteSpd = new Vector2(50.0f, 50.0f);
         Effect effect;
+        float scale = 1.0f;
 
         public Game1()
         {
@@ -61,12 +64,15 @@ namespace PrestoViewer
             font = Content.Load<SpriteFont>("SpriteFont1");
 
             cMapTexture = Content.Load<Texture2D>("cmap");
-            cMapPos = new Vector2(w * 0.25f - cMapTexture.Width / 2, h * 0.5f - cMapTexture.Height / 2);
+            cMapPos = new Vector2(w * 0.15f, h * 0.5f);
 
             hMapTexture = Content.Load<Texture2D>("hmap");
-            hMapPos = new Vector2(w * 0.75f - hMapTexture.Width / 2, h * 0.5f - hMapTexture.Height / 2);
+            hMapPos = new Vector2(w * 0.85f, h * 0.5f);
 
-            spritePos = new Vector2(w * 0.5f - cMapTexture.Width / 2, h * 0.5f - cMapTexture.Height / 2);
+            paletteTexture = Content.Load<Texture2D>("palette");
+            palettePos = new Vector2(w * 0.5f, h * 0.95f);
+
+            spritePos = new Vector2(w * 0.5f, h * 0.5f);
 
             effect = Content.Load<Effect>("Effect1");
         }
@@ -91,7 +97,8 @@ namespace PrestoViewer
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
 
-            // TODO: Add your update logic here
+            int zoomValue = Mouse.GetState().ScrollWheelValue / -120;
+            scale = 1.0f / (float) Math.Pow(2.0, zoomValue);
 
             base.Update(gameTime);
         }
@@ -102,21 +109,32 @@ namespace PrestoViewer
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(Color.AntiqueWhite);
 
-            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend);
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.Default, RasterizerState.CullNone);
 
-            spriteBatch.Draw(cMapTexture, cMapPos, Color.White);
-            spriteBatch.Draw(hMapTexture, hMapPos, Color.White);
+            Vector2 cMapOrigin = new Vector2(cMapTexture.Width / 2.0f, cMapTexture.Height / 2.0f);
+            spriteBatch.Draw(cMapTexture, cMapPos, null, Color.White, 0.0f, cMapOrigin, scale, SpriteEffects.None, 0.0f);
 
-            Vector2 lightDir = new Vector2(Mouse.GetState().X - spritePos.X, Mouse.GetState().Y - spritePos.Y);
+            Vector2 hMapOrigin = new Vector2(hMapTexture.Width / 2.0f, hMapTexture.Height / 2.0f);
+            spriteBatch.Draw(hMapTexture, hMapPos, null, Color.White, 0.0f, hMapOrigin, scale, SpriteEffects.None, 0.0f);
+
+            Vector2 paletteOrigin = new Vector2(paletteTexture.Width / 2.0f, paletteTexture.Height / 2.0f);
+            spriteBatch.Draw(paletteTexture, palettePos, null, Color.White, 0.0f, paletteOrigin, 3.0f * scale, SpriteEffects.None, 0.0f);
+
+            Vector3 lightDir = new Vector3(Mouse.GetState().X - spritePos.X, Mouse.GetState().Y - spritePos.Y, 64.0f);
             lightDir.Normalize();
-            spriteBatch.DrawString(font, "Light: [" + lightDir.X + ", " + lightDir.Y + "]", Vector2.Zero, Color.White);
+            spriteBatch.DrawString(font, "Light: " + lightDir, Vector2.Zero, Color.Black);
 
             effect.Parameters["hMap"].SetValue(hMapTexture);
+            effect.Parameters["palette"].SetValue(paletteTexture);
             effect.Parameters["lightDir"].SetValue(lightDir);
+            effect.Parameters["texWidth"].SetValue(cMapTexture.Width);
+            effect.Parameters["texHeight"].SetValue(cMapTexture.Height);
             effect.CurrentTechnique.Passes[0].Apply();
-            spriteBatch.Draw(cMapTexture, spritePos, Color.White);
+
+            Vector2 spriteOrigin = new Vector2(cMapTexture.Width / 2.0f, cMapTexture.Height / 2.0f);
+            spriteBatch.Draw(cMapTexture, spritePos, null, Color.White, 0.0f, spriteOrigin, scale, SpriteEffects.None, 0.0f);
 
             spriteBatch.End();
 
