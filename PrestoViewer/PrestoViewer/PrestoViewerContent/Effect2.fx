@@ -14,7 +14,7 @@ float3 lightDir;
 float4 PixelShaderFunction(float2 coords: TEXCOORD0) : COLOR0
 {
 	float3 normal = tex2D(nMapSampler, coords).xyz * 2.0f - 1.0f;
-	float shading = max(dot(normal, lightDir), 0.0f);
+	float shading = clamp(dot(normal, lightDir), 0.0f, 1.0f);
 	float4 color = tex2D(s0, coords);
 	float2 paletteCoords = { color.g * (1.0f - shading), color.r };
 	float4 paletteColor = tex2D(paletteSampler, paletteCoords);
