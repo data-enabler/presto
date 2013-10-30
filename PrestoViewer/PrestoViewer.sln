@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrestoViewer", "PrestoViewer\PrestoViewer\PrestoViewer.csproj", "{F26B83DA-30E1-4FB7-A847-C111E111D5FD}"
 EndProject
-Project("{96E2B04D-8817-42C6-938A-82C39BA4D311}") = "PrestoViewerContent", "PrestoViewer\PrestoViewerContent\PrestoViewerContent.contentproj", "{6BD51B0B-86B3-485C-BA64-1BD096AF89F4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrestoViewerContent", "PrestoViewer\PrestoViewerContent\PrestoViewerContent.contentproj", "{6BD51B0B-86B3-485C-BA64-1BD096AF89F4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,8 +11,8 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F26B83DA-30E1-4FB7-A847-C111E111D5FD}.Debug|x86.ActiveCfg = Debug|x86
-		{F26B83DA-30E1-4FB7-A847-C111E111D5FD}.Debug|x86.Build.0 = Debug|x86
+		{F26B83DA-30E1-4FB7-A847-C111E111D5FD}.Debug|x86.ActiveCfg = Debug with arguments|x86
+		{F26B83DA-30E1-4FB7-A847-C111E111D5FD}.Debug|x86.Build.0 = Debug with arguments|x86
 		{F26B83DA-30E1-4FB7-A847-C111E111D5FD}.Release|x86.ActiveCfg = Release|x86
 		{F26B83DA-30E1-4FB7-A847-C111E111D5FD}.Release|x86.Build.0 = Release|x86
 		{6BD51B0B-86B3-485C-BA64-1BD096AF89F4}.Debug|x86.ActiveCfg = Debug|x86

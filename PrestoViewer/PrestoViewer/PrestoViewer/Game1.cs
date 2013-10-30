@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -24,6 +25,9 @@ namespace PrestoViewer
         Vector2 pMapPos;
         Vector2 palettePos;
         Vector2 spritePos;
+        string cMapPath, hMapPath, palettePath;
+        FileSystemWatcher cWatcher, hWatcher, pWatcher;
+        bool filesProvided = false;
         PrestoSprite sprite;
 
         const float BASE_SCALE = 4.0f;
@@ -31,9 +35,38 @@ namespace PrestoViewer
         int keyboardZoom = 0;
         KeyboardState prevKeyState = Keyboard.GetState();
 
-        public Game1() {
+        public Game1(string[] args) {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            bool cmap = false, hmap = false, palette = false;
+            for (int i = 0; i < args.Length - 1; i++) {
+                switch (args[i]) {
+                    case "-c":
+                        cmap = true;
+                        cMapPath = args[++i];
+                        System.Console.WriteLine("Using color map " + cMapPath);
+                        break;
+                    case "-h":
+                        hmap = true;
+                        hMapPath = args[++i];
+                        System.Console.WriteLine("Using height map " + hMapPath);
+                        break;
+                    case "-p":
+                        palette = true;
+                        palettePath = args[++i];
+                        System.Console.WriteLine("Using palette" + palettePath);
+                        break;
+                    default:
+                        System.Console.WriteLine("[Warning] Unsupported argument: " + args[i]);
+                        break;
+                }
+            }
+
+            filesProvided = cmap && hmap && palette;
+            if (!filesProvided && (cmap || hmap || palette)) {
+                System.Console.WriteLine("[Warning] Not all required files were provided");
+            }
         }
 
         /// <summary>
@@ -68,7 +101,27 @@ namespace PrestoViewer
             spritePos = new Vector2(w * 0.5f, h * 0.5f);
 
             PrestoSprite.init(this);
-            sprite = new PrestoSprite("cmap", "hmap", "palette");
+            if (filesProvided) {
+                sprite = new PrestoSprite(cMapPath, hMapPath, palettePath);
+                cWatcher = new System.IO.FileSystemWatcher(Directory.GetCurrentDirectory(), cMapPath);
+                hWatcher = new System.IO.FileSystemWatcher(Directory.GetCurrentDirectory(), hMapPath);
+                pWatcher = new System.IO.FileSystemWatcher(Directory.GetCurrentDirectory(), palettePath);
+                cWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                hWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                pWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                cWatcher.Changed += new FileSystemEventHandler(OnFileChange);
+                hWatcher.Changed += new FileSystemEventHandler(OnFileChange);
+                pWatcher.Changed += new FileSystemEventHandler(OnFileChange);
+                cWatcher.EnableRaisingEvents = true;
+                hWatcher.EnableRaisingEvents = true;
+                pWatcher.EnableRaisingEvents = true;
+            } else {
+                sprite = new PrestoSprite();
+            }
+        }
+
+        private void OnFileChange(object sender, FileSystemEventArgs e) {
+            sprite = new PrestoSprite(cMapPath, hMapPath, palettePath);
         }
 
         /// <summary>

@@ -53,10 +53,28 @@ namespace PrestoViewer {
             effect[1] = game.Content.Load<Effect>("Effect2");
         }
 
-        public PrestoSprite(string cmap, string hmap, string palette) {
-            cMapTexture = game.Content.Load<Texture2D>(cmap);
-            hMapTexture = game.Content.Load<Texture2D>(hmap);
-            paletteTexture = game.Content.Load<Texture2D>(palette);
+        public PrestoSprite() {
+            initSprite(game.Content.Load<Texture2D>("cmap"),
+                       game.Content.Load<Texture2D>("hmap"),
+                       game.Content.Load<Texture2D>("palette"));
+        }
+
+        public PrestoSprite(string cMapPath, string hMapPath, string palettePath) {
+            System.IO.FileStream cStream = new System.IO.FileStream(cMapPath, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+            System.IO.FileStream hStream = new System.IO.FileStream(hMapPath, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+            System.IO.FileStream pStream = new System.IO.FileStream(palettePath, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+            initSprite(Texture2D.FromStream(game.GraphicsDevice, cStream),
+                       Texture2D.FromStream(game.GraphicsDevice, hStream),
+                       Texture2D.FromStream(game.GraphicsDevice, pStream));
+            cStream.Close();
+            hStream.Close();
+            pStream.Close();
+        }
+
+        private void initSprite(Texture2D cmap, Texture2D hmap, Texture2D palette) {
+            cMapTexture = cmap;
+            hMapTexture = hmap;
+            paletteTexture = palette;
 
             // Normal map for Effect 2
             int width = hMapTexture.Width;
