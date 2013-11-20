@@ -53,10 +53,8 @@ namespace PrestoViewer {
             effect[1] = game.Content.Load<Effect>("Effect2");
         }
 
-        public PrestoSprite() {
-            initSprite(game.Content.Load<Texture2D>("cmap"),
-                       game.Content.Load<Texture2D>("hmap"),
-                       game.Content.Load<Texture2D>("palette"));
+        public PrestoSprite(Texture2D cMap, Texture2D hMap, Texture2D palette) {
+            initSprite(cMap, hMap, palette);
         }
 
         public PrestoSprite(string cMapPath, string hMapPath, string palettePath) {

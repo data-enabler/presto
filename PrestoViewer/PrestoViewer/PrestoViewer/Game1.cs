@@ -19,17 +19,29 @@ namespace PrestoViewer
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
         SpriteFont font;
+
         Vector2 cMapPos;
         Vector2 hMapPos;
         Vector2 nMapPos;
         Vector2 pMapPos;
         Vector2 palettePos;
         Vector2 spritePos;
-        string cMapPath, hMapPath, palettePath;
-        FileSystemWatcher cWatcher, hWatcher, pWatcher;
-        bool filesProvided = false;
+
+        Texture2D cMapTexture, hMapTexture, paletteTexture;
         PrestoSprite sprite;
 
+        // File loading and watching
+        string cMapPath, hMapPath, palettePath;
+        FileSystemWatcher cWatcher, hWatcher, pWatcher;
+        FileSystemEventHandler cHandler, hHandler, pHandler;
+        bool filesProvided = false;
+
+        // Drag and Drop 
+        System.Windows.Forms.Form form;
+        Rectangle cMapDrop, hMapDrop, paletteDrop;
+        const int DROP_BOX_SIZE = 150;
+
+        // Zoom
         const float BASE_SCALE = 4.0f;
         float scale = BASE_SCALE;
         int keyboardZoom = 0;
@@ -55,7 +67,7 @@ namespace PrestoViewer
                     case "-p":
                         palette = true;
                         palettePath = args[++i];
-                        System.Console.WriteLine("Using palette" + palettePath);
+                        System.Console.WriteLine("Using palette " + palettePath);
                         break;
                     default:
                         System.Console.WriteLine("[Warning] Unsupported argument: " + args[i]);
@@ -67,6 +79,10 @@ namespace PrestoViewer
             if (!filesProvided && (cmap || hmap || palette)) {
                 System.Console.WriteLine("[Warning] Not all required files were provided");
             }
+
+            cHandler = new FileSystemEventHandler(OnCMapChange);
+            hHandler = new FileSystemEventHandler(OnHMapChange);
+            pHandler = new FileSystemEventHandler(OnPaletteChange);
         }
 
         /// <summary>
@@ -77,21 +93,9 @@ namespace PrestoViewer
         /// </summary>
         protected override void Initialize() {
             this.IsMouseVisible = true;
-            base.Initialize();
-        }
 
-        /// <summary>
-        /// LoadContent will be called once per game and is the place to load
-        /// all of your content.
-        /// </summary>
-        protected override void LoadContent() {
             int w = graphics.GraphicsDevice.Viewport.Width;
             int h = graphics.GraphicsDevice.Viewport.Height;
-
-            // Create a new SpriteBatch, which can be used to draw textures.
-            spriteBatch = new SpriteBatch(GraphicsDevice);
-
-            font = Content.Load<SpriteFont>("SpriteFont1");
 
             cMapPos = new Vector2(w * 0.15f, h * 0.25f);
             pMapPos = new Vector2(w * 0.15f, h * 0.75f);
@@ -100,28 +104,142 @@ namespace PrestoViewer
             palettePos = new Vector2(w * 0.5f, h * 0.95f);
             spritePos = new Vector2(w * 0.5f, h * 0.5f);
 
+            int hw = DROP_BOX_SIZE / 2;
+            cMapDrop = new Rectangle((int)cMapPos.X - hw, (int)cMapPos.Y - hw, DROP_BOX_SIZE, DROP_BOX_SIZE);
+            hMapDrop = new Rectangle((int)hMapPos.X - hw, (int)hMapPos.Y - hw, DROP_BOX_SIZE, DROP_BOX_SIZE);
+            paletteDrop = new Rectangle((int)palettePos.X - hw, (int)palettePos.Y - hw, DROP_BOX_SIZE, DROP_BOX_SIZE);
+
+            form = System.Windows.Forms.Form.FromHandle(Window.Handle) as System.Windows.Forms.Form;
+            if (form != null) {
+                form.AllowDrop = true;
+                form.DragOver += new System.Windows.Forms.DragEventHandler(OnFileDragOver);
+                form.DragDrop += new System.Windows.Forms.DragEventHandler(OnFileDragDrop);
+            }
+
+            base.Initialize();
+        }
+
+        /// <summary>
+        /// LoadContent will be called once per game and is the place to load
+        /// all of your content.
+        /// </summary>
+        protected override void LoadContent() {
+            // Create a new SpriteBatch, which can be used to draw textures.
+            spriteBatch = new SpriteBatch(GraphicsDevice);
+
+            font = Content.Load<SpriteFont>("SpriteFont1");
+
             PrestoSprite.init(this);
             if (filesProvided) {
-                sprite = new PrestoSprite(cMapPath, hMapPath, palettePath);
-                cWatcher = new System.IO.FileSystemWatcher(Directory.GetCurrentDirectory(), cMapPath);
-                hWatcher = new System.IO.FileSystemWatcher(Directory.GetCurrentDirectory(), hMapPath);
-                pWatcher = new System.IO.FileSystemWatcher(Directory.GetCurrentDirectory(), palettePath);
-                cWatcher.NotifyFilter = NotifyFilters.LastWrite;
-                hWatcher.NotifyFilter = NotifyFilters.LastWrite;
-                pWatcher.NotifyFilter = NotifyFilters.LastWrite;
-                cWatcher.Changed += new FileSystemEventHandler(OnFileChange);
-                hWatcher.Changed += new FileSystemEventHandler(OnFileChange);
-                pWatcher.Changed += new FileSystemEventHandler(OnFileChange);
-                cWatcher.EnableRaisingEvents = true;
-                hWatcher.EnableRaisingEvents = true;
-                pWatcher.EnableRaisingEvents = true;
+                // Load textures
+                cMapTexture = LoadTextureFromFile(cMapPath);
+                hMapTexture = LoadTextureFromFile(hMapPath);
+                paletteTexture = LoadTextureFromFile(palettePath);
+
+                // Add Watcher on files
+                cWatcher = WatchFile(cMapPath, cHandler);
+                hWatcher = WatchFile(hMapPath, hHandler);
+                pWatcher = WatchFile(palettePath, pHandler);
             } else {
-                sprite = new PrestoSprite();
+                cMapTexture = Content.Load<Texture2D>("cmap");
+                hMapTexture = Content.Load<Texture2D>("hmap");
+                paletteTexture = Content.Load<Texture2D>("palette");
+            }
+            ReloadSprite();
+        }
+
+        private void ReloadSprite() {
+            sprite = new PrestoSprite(cMapTexture, hMapTexture, paletteTexture);
+        }
+
+        private Texture2D LoadTextureFromFile(string path) {
+            Texture2D tex;
+            using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read)) {
+                tex = Texture2D.FromStream(GraphicsDevice, stream);
+            }
+            return tex;
+        }
+
+        private static FileSystemWatcher WatchFile(string path, FileSystemEventHandler handler) {
+            path = Path.GetFullPath(path);
+            FileSystemWatcher watcher = new FileSystemWatcher(Path.GetDirectoryName(path), Path.GetFileName(path));
+            watcher.NotifyFilter = NotifyFilters.LastWrite;
+            watcher.Changed += handler;
+            watcher.EnableRaisingEvents = true;
+            return watcher;
+        }
+
+        private void OnCMapChange(object sender, FileSystemEventArgs e) {
+            Console.WriteLine("CMap changed");
+            cMapTexture = LoadTextureFromFile(cMapPath);
+            ReloadSprite();
+        }
+
+        private void OnHMapChange(object sender, FileSystemEventArgs e) {
+            Console.WriteLine("HMap changed");
+            hMapTexture = LoadTextureFromFile(hMapPath);
+            ReloadSprite();
+        }
+
+        private void OnPaletteChange(object sender, FileSystemEventArgs e) {
+            Console.WriteLine("Palette changed");
+            paletteTexture = LoadTextureFromFile(palettePath);
+            ReloadSprite();
+        }
+
+        private void OnFileDragOver(object sender, System.Windows.Forms.DragEventArgs e) {
+            System.Drawing.Point p = form.PointToClient(new System.Drawing.Point(e.X, e.Y));
+            Console.Write("{0}, {1}", p.X, p.Y);
+            if (e.Data.GetDataPresent(System.Windows.Forms.DataFormats.FileDrop)) {
+                if (cMapDrop.Contains(p.X, p.Y)) {
+                    e.Effect = System.Windows.Forms.DragDropEffects.Link;
+                    Console.WriteLine(" C");
+                } else if (hMapDrop.Contains(p.X, p.Y)) {
+                    e.Effect = System.Windows.Forms.DragDropEffects.Link;
+                    Console.WriteLine(" H");
+                } else if (paletteDrop.Contains(p.X, p.Y)) {
+                    e.Effect = System.Windows.Forms.DragDropEffects.Link;
+                    Console.WriteLine(" P");
+                } else {
+                    e.Effect = System.Windows.Forms.DragDropEffects.None;
+                    Console.WriteLine();
+                }
+            } else {
+                e.Effect = System.Windows.Forms.DragDropEffects.None;
             }
         }
 
-        private void OnFileChange(object sender, FileSystemEventArgs e) {
-            sprite = new PrestoSprite(cMapPath, hMapPath, palettePath);
+        private void OnFileDragDrop(object sender, System.Windows.Forms.DragEventArgs e) {
+            if (e.Data.GetDataPresent(System.Windows.Forms.DataFormats.FileDrop)) {
+                string[] files = (string[])e.Data.GetData(System.Windows.Forms.DataFormats.FileDrop);
+                if (files != null) {
+                    // Ignore files other than the first
+                    System.Drawing.Point p = form.PointToClient(new System.Drawing.Point(e.X, e.Y));
+                    Console.WriteLine(files[0]);
+                    if (cMapDrop.Contains(p.X, p.Y)) {
+                        cWatcher.EnableRaisingEvents = false;
+                        cWatcher.Dispose();
+                        cMapPath = files[0];
+                        cMapTexture = LoadTextureFromFile(files[0]);
+                        ReloadSprite();
+                        cWatcher = WatchFile(files[0], cHandler);
+                    } else if (hMapDrop.Contains(p.X, p.Y)) {
+                        hWatcher.EnableRaisingEvents = false;
+                        hWatcher.Dispose();
+                        hMapPath = files[0];
+                        hMapTexture = LoadTextureFromFile(files[0]);
+                        ReloadSprite();
+                        hWatcher = WatchFile(files[0], hHandler);
+                    } else if (paletteDrop.Contains(p.X, p.Y)) {
+                        pWatcher.EnableRaisingEvents = false;
+                        pWatcher.Dispose();
+                        palettePath = files[0];
+                        paletteTexture = LoadTextureFromFile(files[0]);
+                        ReloadSprite();
+                        pWatcher = WatchFile(files[0], pHandler);
+                    }
+                }
+            }
         }
 
         /// <summary>
