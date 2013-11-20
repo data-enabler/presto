@@ -33,7 +33,7 @@ namespace PrestoViewer {
         }
         Texture2D paletteTexture;
         public Texture2D Palette {
-            get { return adjustedPaletteTexture; }
+            get { return paletteTexture; }
         }
         // Leftmost pixels removed, size adjusted to power of 2
         Texture2D adjustedPaletteTexture;
@@ -160,7 +160,8 @@ namespace PrestoViewer {
                     }
                     apColors[y * pDim + x - 1] = c;
                 }
-                colorToPMapIndex[paletteColors[y * pw]] = new Color((y + 0.5f) / pDim, (x - 1.0f) / pDim, 0.0f);
+                x--;
+                colorToPMapIndex[paletteColors[y * pw]] = new Color((y + 0.5f) / pDim, (x - 1.0f) / pDim, 0.5f / pDim);
             }
 
             for (int y = 0; y < ch; y++) {
@@ -175,6 +176,10 @@ namespace PrestoViewer {
 
             pMapTexture.SetData<Color>(pMapColors);
             adjustedPaletteTexture.SetData<Color>(apColors);
+
+            using (System.IO.Stream stream = System.IO.File.Create("pMap.png")) {
+                pMapTexture.SaveAsPng(stream, cDim, cDim);
+            }
         }
 
         public void draw(SpriteBatch spriteBatch, Vector2 spritePos, Vector2 spriteOrigin, float scale, Vector3 lightDir) {

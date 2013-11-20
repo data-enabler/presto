@@ -171,20 +171,32 @@ namespace PrestoViewer
 
         private void OnCMapChange(object sender, FileSystemEventArgs e) {
             Console.WriteLine("CMap changed");
-            cMapTexture = LoadTextureFromFile(cMapPath);
-            ReloadSprite();
+            try {
+                cMapTexture = LoadTextureFromFile(cMapPath);
+                ReloadSprite();
+            } catch (System.IO.IOException) {
+                Console.WriteLine("Error loading file {0}", cMapPath);
+            }
         }
 
         private void OnHMapChange(object sender, FileSystemEventArgs e) {
             Console.WriteLine("HMap changed");
-            hMapTexture = LoadTextureFromFile(hMapPath);
-            ReloadSprite();
+            try {
+                hMapTexture = LoadTextureFromFile(hMapPath);
+                ReloadSprite();
+            } catch (System.IO.IOException) {
+                Console.WriteLine("Error loading file {0}", hMapPath);
+            }
         }
 
         private void OnPaletteChange(object sender, FileSystemEventArgs e) {
             Console.WriteLine("Palette changed");
-            paletteTexture = LoadTextureFromFile(palettePath);
-            ReloadSprite();
+            try {
+                paletteTexture = LoadTextureFromFile(palettePath);
+                ReloadSprite();
+            } catch (System.IO.IOException) {
+                Console.WriteLine("Error loading file {0}", palettePath);
+            }
         }
 
         private void OnFileDragOver(object sender, System.Windows.Forms.DragEventArgs e) {
@@ -217,25 +229,43 @@ namespace PrestoViewer
                     System.Drawing.Point p = form.PointToClient(new System.Drawing.Point(e.X, e.Y));
                     Console.WriteLine(files[0]);
                     if (cMapDrop.Contains(p.X, p.Y)) {
-                        cWatcher.EnableRaisingEvents = false;
-                        cWatcher.Dispose();
+                        if (cWatcher != null) {
+                            cWatcher.EnableRaisingEvents = false;
+                            cWatcher.Dispose(); 
+                        }
                         cMapPath = files[0];
-                        cMapTexture = LoadTextureFromFile(files[0]);
-                        ReloadSprite();
+                        try {
+                            cMapTexture = LoadTextureFromFile(files[0]);
+                            ReloadSprite();
+                        } catch (System.IO.IOException) {
+                            Console.WriteLine("Error loading file {0}", files[0]);
+                        }
                         cWatcher = WatchFile(files[0], cHandler);
                     } else if (hMapDrop.Contains(p.X, p.Y)) {
-                        hWatcher.EnableRaisingEvents = false;
-                        hWatcher.Dispose();
+                        if (hWatcher != null) {
+                            hWatcher.EnableRaisingEvents = false;
+                            hWatcher.Dispose();
+                        }
                         hMapPath = files[0];
-                        hMapTexture = LoadTextureFromFile(files[0]);
-                        ReloadSprite();
+                        try {
+                            hMapTexture = LoadTextureFromFile(files[0]);
+                            ReloadSprite();
+                        } catch (System.IO.IOException) {
+                            Console.WriteLine("Error loading file {0}", files[0]);
+                        }
                         hWatcher = WatchFile(files[0], hHandler);
                     } else if (paletteDrop.Contains(p.X, p.Y)) {
-                        pWatcher.EnableRaisingEvents = false;
-                        pWatcher.Dispose();
+                        if (pWatcher != null) {
+                            pWatcher.EnableRaisingEvents = false;
+                            pWatcher.Dispose();
+                        }
                         palettePath = files[0];
-                        paletteTexture = LoadTextureFromFile(files[0]);
-                        ReloadSprite();
+                        try {
+                            paletteTexture = LoadTextureFromFile(files[0]);
+                            ReloadSprite();
+                        } catch (System.IO.IOException) {
+                            Console.WriteLine("Error loading file {0}", files[0]);
+                        }
                         pWatcher = WatchFile(files[0], pHandler);
                     }
                 }
