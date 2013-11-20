@@ -74,23 +74,28 @@ namespace PrestoViewer {
             hMapTexture = hmap;
             paletteTexture = palette;
 
-            // Normal map for Effect 2
-            int width = hMapTexture.Width;
-            int height = hMapTexture.Height;
-            effect2NMapTexture = new Texture2D(game.GraphicsDevice, width, height);
-            Color[] effect2Normals = new Color[width * height];
-            Color[] hMapColors = new Color[width * height];
+            // Convert height map to normal map
+            int hw = hMapTexture.Width;
+            int hh = hMapTexture.Height;
+            Color[] hMapColors = new Color[hw * hh];
+
+            // Round up texture dimensions to power of 2
+            int hDim = 1 << (int)Math.Ceiling(Math.Log(Math.Max(hw, hh), 2.0));
+            effect2NMapTexture = new Texture2D(game.GraphicsDevice, hDim, hDim);
+            Color[] effect2Normals = new Color[hDim * hDim];
+
             hMapTexture.GetData<Color>(hMapColors);
-            int[] offsets = { -1, 1, -width, width }; // left, right, down, up
+
+            int[] offsets = { -1, 1, -hw, hw }; // left, right, down, up
             del[] toEdge = {
                 (pix, imgWidth, imgHeight) => pix % imgWidth,
                 (pix, imgWidth, imgHeight) => imgWidth - 1 - (pix % imgWidth),
                 (pix, imgWidth, imgHeight) => pix / imgWidth,
                 (pix, imgWidth, imgHeight) => imgHeight - 1 - (pix / imgWidth)
             };
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    int origPix = y * width + x;
+            for (int y = 0; y < hh; y++) {
+                for (int x = 0; x < hw; x++) {
+                    int origPix = y * hw + x;
                     Color orig = hMapColors[origPix];
                     int[] dists = new int[4]; // left, right, down, up
                     float[] diffs = new float[4]; // left, right, down, up
@@ -98,7 +103,7 @@ namespace PrestoViewer {
 
                     for (int dir = 0; dir < 4; dir++) {
                         int pix = origPix;
-                        for (k = 0; k < toEdge[dir](pix, width, height); k++) {
+                        for (k = 0; k < toEdge[dir](pix, hw, hh); k++) {
                             pix += offsets[dir];
                             Color c = hMapColors[pix];
                             if (!orig.Equals(c)) {
@@ -113,26 +118,35 @@ namespace PrestoViewer {
 
                     Vector3 n = new Vector3(diffs[1] / dists[1] - diffs[0] / dists[0], diffs[3] / dists[3] - diffs[2] / dists[2], 0.2f);
                     n.Normalize();
-                    effect2Normals[y * width + x].R = (byte)Math.Round(n.X * 127 + 127);
-                    effect2Normals[y * width + x].G = (byte)Math.Round(n.Y * 127 + 127);
-                    effect2Normals[y * width + x].B = (byte)Math.Round(n.Z * 127 + 127);
-                    effect2Normals[y * width + x].A = 255;
+
+                    int pixDst = y * hDim + x;
+                    effect2Normals[pixDst].R = (byte)Math.Round(n.X * 127 + 127);
+                    effect2Normals[pixDst].G = (byte)Math.Round(n.Y * 127 + 127);
+                    effect2Normals[pixDst].B = (byte)Math.Round(n.Z * 127 + 127);
+                    effect2Normals[pixDst].A = 255;
                 }
             }
             effect2NMapTexture.SetData<Color>(effect2Normals);
 
-            // Pallete Map
+            // Create color index map, used to get pallete coordinates
             int cw = cMapTexture.Width;
             int ch = cMapTexture.Height;
+            Color[] cMapColors = new Color[cw * ch];
+
+            // Round up texture dimensions to power of 2
+            int cDim = 1 << (int)Math.Ceiling(Math.Log(Math.Max(cw, ch), 2.0));
+            pMapTexture = new Texture2D(game.GraphicsDevice, cDim, cDim);
+            Color[] pMapColors = new Color[cDim * cDim];
+
             int pw = paletteTexture.Width;
             int ph = paletteTexture.Height;
-            pMapTexture = new Texture2D(game.GraphicsDevice, cw, ch);
-            int dim = 1 << (int)Math.Ceiling(Math.Log(Math.Max(pw, ph), 2.0));
-            adjustedPaletteTexture = new Texture2D(game.GraphicsDevice, dim, dim);
-            Color[] cMapColors = new Color[cw * ch];
-            Color[] pMapColors = new Color[cw * ch];
             Color[] paletteColors = new Color[pw * ph];
-            Color[] apColors = new Color[dim * dim];
+
+            // Round up texture dimensions to power of 2
+            int pDim = 1 << (int)Math.Ceiling(Math.Log(Math.Max(pw, ph), 2.0));
+            adjustedPaletteTexture = new Texture2D(game.GraphicsDevice, pDim, pDim);
+            Color[] apColors = new Color[pDim * pDim];
+
             cMapTexture.GetData<Color>(cMapColors);
             paletteTexture.GetData<Color>(paletteColors);
             Dictionary<Color, Color> colorToPMapIndex = new Dictionary<Color, Color>();
@@ -144,16 +158,17 @@ namespace PrestoViewer {
                     if (c.A == 0) {
                         break;
                     }
-                    apColors[y * dim + x - 1] = c;
+                    apColors[y * pDim + x - 1] = c;
                 }
-                colorToPMapIndex[paletteColors[y * pw]] = new Color((y + 0.5f) / dim, (x - 1.0f) / dim, 0.0f);
+                colorToPMapIndex[paletteColors[y * pw]] = new Color((y + 0.5f) / pDim, (x - 1.0f) / pDim, 0.0f);
             }
 
             for (int y = 0; y < ch; y++) {
                 for (int x = 0; x < cw; x++) {
-                    int pix = y * cw + x;
-                    if (colorToPMapIndex.ContainsKey(cMapColors[pix])) {
-                        pMapColors[pix] = colorToPMapIndex[cMapColors[pix]];
+                    int pixSrc = y * cw + x;
+                    int pixDst = y * cDim + x;
+                    if (colorToPMapIndex.ContainsKey(cMapColors[pixSrc])) {
+                        pMapColors[pixDst] = colorToPMapIndex[cMapColors[pixSrc]];
                     }
                 }
             }
