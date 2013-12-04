@@ -51,7 +51,9 @@ namespace PrestoViewer
         const string NMAP_TEXT = "Normal Map\n(For Internal Use)";
         bool viewHelp = false;
         const string HELP_TEXT = "To replace the Color Map, Height Map, or Color Palette,\n" +
-            "simply drag and drop files into the viewer.\n\n" +
+            "simply drag and drop files into the viewer.\n" +
+            "Supported formats are PNG and GIF.\n" +
+            "Images will automatically be reloaded when changes are detected.\n\n" +
             "Controls:\n" +
             "Mouse Scroll or Arrow Up/Down: Zoom In/Out\n" +
             "Right-Click: Lock/Unlock Light Direction\n" +
@@ -327,64 +329,66 @@ namespace PrestoViewer
             int x = currMouseState.X;
             int y = currMouseState.Y;
 
-            // Allows the game to exit
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed) {
-                this.Exit();
-            }
+            if (this.IsActive) {
+                // Allows the game to exit
+                if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed) {
+                    this.Exit();
+                }
 
-            // Change Shader
-            //if (currKeyState.IsKeyDown(Keys.D1)) {
-            //    sprite.Shader = PrestoSprite.ShadingVersion.Ver1;
-            //}
-            //if (currKeyState.IsKeyDown(Keys.D2)) {
-            //    sprite.Shader = PrestoSprite.ShadingVersion.Ver2;
-            //}
+                // Change Shader
+                //if (currKeyState.IsKeyDown(Keys.D1)) {
+                //    sprite.Shader = PrestoSprite.ShadingVersion.Ver1;
+                //}
+                //if (currKeyState.IsKeyDown(Keys.D2)) {
+                //    sprite.Shader = PrestoSprite.ShadingVersion.Ver2;
+                //}
 
-            // Zoom
-            if (currKeyState.IsKeyDown(Keys.Up) && !prevKeyState.IsKeyDown(Keys.Up)) {
-                keyboardZoom--;
-            }
-            if (currKeyState.IsKeyDown(Keys.Down) && !prevKeyState.IsKeyDown(Keys.Down)) {
-                keyboardZoom++;
-            }
-            int zoomValue = currMouseState.ScrollWheelValue / -120;
-            scale = BASE_SCALE / (float) Math.Pow(2.0, zoomValue + keyboardZoom);
+                // Zoom
+                if (currKeyState.IsKeyDown(Keys.Up) && !prevKeyState.IsKeyDown(Keys.Up)) {
+                    keyboardZoom--;
+                }
+                if (currKeyState.IsKeyDown(Keys.Down) && !prevKeyState.IsKeyDown(Keys.Down)) {
+                    keyboardZoom++;
+                }
+                int zoomValue = currMouseState.ScrollWheelValue / -120;
+                scale = BASE_SCALE / (float)Math.Pow(2.0, zoomValue + keyboardZoom);
 
-            // Tooltips
-            if (cMapDrop.Contains(x, y)) {
-                tooltip = CMAP_TEXT;
-            } else if (hMapDrop.Contains(x, y)) {
-                tooltip = HMAP_TEXT;
-            } else if (paletteDrop.Contains(x, y)) {
-                tooltip = PALETTE_TEXT;
-            } else if (pMapHover.Contains(x, y)) {
-                tooltip = PMAP_TEXT;
-            } else if (nMapHover.Contains(x, y)) {
-                tooltip = NMAP_TEXT;
-            } else {
-                tooltip = "";
-            }
+                // Tooltips
+                if (cMapDrop.Contains(x, y)) {
+                    tooltip = CMAP_TEXT;
+                } else if (hMapDrop.Contains(x, y)) {
+                    tooltip = HMAP_TEXT;
+                } else if (paletteDrop.Contains(x, y)) {
+                    tooltip = PALETTE_TEXT;
+                } else if (pMapHover.Contains(x, y)) {
+                    tooltip = PMAP_TEXT;
+                } else if (nMapHover.Contains(x, y)) {
+                    tooltip = NMAP_TEXT;
+                } else {
+                    tooltip = "";
+                }
 
-            // Light Lock
-            if (currMouseState.RightButton == ButtonState.Pressed &&
-                !(prevMouseState.RightButton == ButtonState.Pressed)) {
-                lightLock = !lightLock;
-            }
+                // Light Lock
+                if (currMouseState.RightButton == ButtonState.Pressed &&
+                    !(prevMouseState.RightButton == ButtonState.Pressed)) {
+                    lightLock = !lightLock;
+                }
 
-            // Update Light Dir
-            if (!lightLock) {
-                lightDir = new Vector3(currMouseState.X - spritePos.X, currMouseState.Y - spritePos.Y, 128.0f);
-                lightDir.Normalize();
-            }
+                // Update Light Dir
+                if (!lightLock) {
+                    lightDir = new Vector3(currMouseState.X - spritePos.X, currMouseState.Y - spritePos.Y, 128.0f);
+                    lightDir.Normalize();
+                }
 
-            // Update Background Color
-            if (currKeyState.IsKeyDown(Keys.Space) && !prevKeyState.IsKeyDown(Keys.Space)) {
-                invertColor = !invertColor;
-            }
+                // Update Background Color
+                if (currKeyState.IsKeyDown(Keys.Space) && !prevKeyState.IsKeyDown(Keys.Space)) {
+                    invertColor = !invertColor;
+                }
 
-            // Toggle Help
-            if (currKeyState.IsKeyDown(Keys.OemQuestion) && !prevKeyState.IsKeyDown(Keys.OemQuestion)) {
-                viewHelp = !viewHelp;
+                // Toggle Help
+                if (currKeyState.IsKeyDown(Keys.OemQuestion) && !prevKeyState.IsKeyDown(Keys.OemQuestion)) {
+                    viewHelp = !viewHelp;
+                }
             }
 
             prevKeyState = currKeyState;
@@ -421,7 +425,7 @@ namespace PrestoViewer
             Vector2 paletteOrigin = new Vector2(sprite.Palette.Width / 2.0f, sprite.Palette.Height / 2.0f);
             spriteBatch.Draw(sprite.Palette, palettePos, null, Color.White, 0.0f, paletteOrigin, 3.0f * scale, SpriteEffects.None, 0.0f);
 
-            spriteBatch.DrawString(font, "Light: " + lightDir, Vector2.Zero, textColor);
+            spriteBatch.DrawString(font, "Light Dir: " + lightDir, Vector2.Zero, textColor);
             if (lightLock) {
                 spriteBatch.DrawString(font, "Light direction locked, right-click to unlock", new Vector2(0, font.LineSpacing), textColor);
             }

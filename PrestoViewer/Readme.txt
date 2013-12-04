@@ -1,4 +1,4 @@
-To replace the Color Map, Height Map, or Color Palette, simply drag and drop files into the viewer.
+To replace the Color Map, Height Map, or Color Palette, simply drag and drop files into the viewer. Supported formats are PNG and GIF. These images will automatically be reloaded when changes are detected.
 
 Anternatively, files can be given as parameters to the program like so:
 PrestoViewer.exe -c [color map file] -h [height map file] -p [palette file]
