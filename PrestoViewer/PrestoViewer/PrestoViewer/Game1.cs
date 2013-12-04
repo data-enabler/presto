@@ -41,11 +41,42 @@ namespace PrestoViewer
         Rectangle cMapDrop, hMapDrop, paletteDrop;
         const int DROP_BOX_SIZE = 150;
 
+        // Tooltips
+        string tooltip = "";
+        Rectangle pMapHover, nMapHover;
+        const string CMAP_TEXT = "Base Color Map";
+        const string HMAP_TEXT = "Height Map";
+        const string PALETTE_TEXT = "Color Palette";
+        const string PMAP_TEXT = "Palette Map\n(For Internal Use)";
+        const string NMAP_TEXT = "Normal Map\n(For Internal Use)";
+        bool viewHelp = false;
+        const string HELP_TEXT = "To replace the Color Map, Height Map, or Color Palette,\n" +
+            "simply drag and drop files into the viewer.\n\n" +
+            "Controls:\n" +
+            "Mouse Scroll or Arrow Up/Down: Zoom In/Out\n" +
+            "Right-Click: Lock/Unlock Light Direction\n" +
+            "Space: Toggle Background Color\n" +
+            "?: Toggle Help";
+
+        // Input
+        KeyboardState prevKeyState = Keyboard.GetState();
+        MouseState prevMouseState = Mouse.GetState();
+
         // Zoom
         const float BASE_SCALE = 4.0f;
         float scale = BASE_SCALE;
         int keyboardZoom = 0;
-        KeyboardState prevKeyState = Keyboard.GetState();
+
+        // Light Dir
+        Vector3 lightDir = Vector3.UnitZ;
+        bool lightLock = false;
+
+        // Colors
+        Color[] colors = { Color.AntiqueWhite, new Color(0.2f, 0.2f, 0.2f) };
+        bool invertColor = false;
+
+        // Misc
+        Texture2D WHITE_BOX;
 
         public Game1(string[] args) {
             graphics = new GraphicsDeviceManager(this);
@@ -108,6 +139,8 @@ namespace PrestoViewer
             cMapDrop = new Rectangle((int)cMapPos.X - hw, (int)cMapPos.Y - hw, DROP_BOX_SIZE, DROP_BOX_SIZE);
             hMapDrop = new Rectangle((int)hMapPos.X - hw, (int)hMapPos.Y - hw, DROP_BOX_SIZE, DROP_BOX_SIZE);
             paletteDrop = new Rectangle((int)palettePos.X - hw, (int)palettePos.Y - hw, DROP_BOX_SIZE, DROP_BOX_SIZE);
+            pMapHover = new Rectangle((int)pMapPos.X - hw, (int)pMapPos.Y - hw, DROP_BOX_SIZE, DROP_BOX_SIZE);
+            nMapHover = new Rectangle((int)nMapPos.X - hw, (int)nMapPos.Y - hw, DROP_BOX_SIZE, DROP_BOX_SIZE);
 
             form = System.Windows.Forms.Form.FromHandle(Window.Handle) as System.Windows.Forms.Form;
             if (form != null) {
@@ -128,6 +161,9 @@ namespace PrestoViewer
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
             font = Content.Load<SpriteFont>("SpriteFont1");
+
+            WHITE_BOX = new Texture2D(GraphicsDevice, 1, 1);
+            WHITE_BOX.SetData(new[] { Color.White });
 
             PrestoSprite.init(this);
             if (filesProvided) {
@@ -170,9 +206,10 @@ namespace PrestoViewer
         }
 
         private void OnCMapChange(object sender, FileSystemEventArgs e) {
-            Console.WriteLine("CMap changed");
+            Console.WriteLine("CMap change detected");
             try {
                 cMapTexture = LoadTextureFromFile(cMapPath);
+                Console.WriteLine("CMap updated");
                 ReloadSprite();
             } catch (System.IO.IOException) {
                 Console.WriteLine("Error loading file {0}", cMapPath);
@@ -180,9 +217,10 @@ namespace PrestoViewer
         }
 
         private void OnHMapChange(object sender, FileSystemEventArgs e) {
-            Console.WriteLine("HMap changed");
+            Console.WriteLine("HMap change detected");
             try {
                 hMapTexture = LoadTextureFromFile(hMapPath);
+                Console.WriteLine("HMap updated");
                 ReloadSprite();
             } catch (System.IO.IOException) {
                 Console.WriteLine("Error loading file {0}", hMapPath);
@@ -190,9 +228,10 @@ namespace PrestoViewer
         }
 
         private void OnPaletteChange(object sender, FileSystemEventArgs e) {
-            Console.WriteLine("Palette changed");
+            Console.WriteLine("Palette change detected");
             try {
                 paletteTexture = LoadTextureFromFile(palettePath);
+                Console.WriteLine("Palette updated");
                 ReloadSprite();
             } catch (System.IO.IOException) {
                 Console.WriteLine("Error loading file {0}", palettePath);
@@ -201,20 +240,15 @@ namespace PrestoViewer
 
         private void OnFileDragOver(object sender, System.Windows.Forms.DragEventArgs e) {
             System.Drawing.Point p = form.PointToClient(new System.Drawing.Point(e.X, e.Y));
-            Console.Write("{0}, {1}", p.X, p.Y);
             if (e.Data.GetDataPresent(System.Windows.Forms.DataFormats.FileDrop)) {
                 if (cMapDrop.Contains(p.X, p.Y)) {
                     e.Effect = System.Windows.Forms.DragDropEffects.Link;
-                    Console.WriteLine(" C");
                 } else if (hMapDrop.Contains(p.X, p.Y)) {
                     e.Effect = System.Windows.Forms.DragDropEffects.Link;
-                    Console.WriteLine(" H");
                 } else if (paletteDrop.Contains(p.X, p.Y)) {
                     e.Effect = System.Windows.Forms.DragDropEffects.Link;
-                    Console.WriteLine(" P");
                 } else {
                     e.Effect = System.Windows.Forms.DragDropEffects.None;
-                    Console.WriteLine();
                 }
             } else {
                 e.Effect = System.Windows.Forms.DragDropEffects.None;
@@ -227,7 +261,6 @@ namespace PrestoViewer
                 if (files != null) {
                     // Ignore files other than the first
                     System.Drawing.Point p = form.PointToClient(new System.Drawing.Point(e.X, e.Y));
-                    Console.WriteLine(files[0]);
                     if (cMapDrop.Contains(p.X, p.Y)) {
                         if (cWatcher != null) {
                             cWatcher.EnableRaisingEvents = false;
@@ -235,6 +268,7 @@ namespace PrestoViewer
                         }
                         cMapPath = files[0];
                         try {
+                            Console.WriteLine("Setting CMap: {0}", files[0]);
                             cMapTexture = LoadTextureFromFile(files[0]);
                             ReloadSprite();
                         } catch (System.IO.IOException) {
@@ -248,6 +282,7 @@ namespace PrestoViewer
                         }
                         hMapPath = files[0];
                         try {
+                            Console.WriteLine("Setting HMap: {0}", files[0]);
                             hMapTexture = LoadTextureFromFile(files[0]);
                             ReloadSprite();
                         } catch (System.IO.IOException) {
@@ -261,6 +296,7 @@ namespace PrestoViewer
                         }
                         palettePath = files[0];
                         try {
+                            Console.WriteLine("Setting Palette: {0}", files[0]);
                             paletteTexture = LoadTextureFromFile(files[0]);
                             ReloadSprite();
                         } catch (System.IO.IOException) {
@@ -286,30 +322,73 @@ namespace PrestoViewer
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime) {
+            KeyboardState currKeyState = Keyboard.GetState();
+            MouseState currMouseState = Mouse.GetState();
+            int x = currMouseState.X;
+            int y = currMouseState.Y;
+
             // Allows the game to exit
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed) {
                 this.Exit();
             }
 
-            KeyboardState currKeyState = Keyboard.GetState();
-            if (currKeyState.IsKeyDown(Keys.D1)) {
-                sprite.Shader = PrestoSprite.ShadingVersion.Ver1;
-            }
-            if (currKeyState.IsKeyDown(Keys.D2)) {
-                sprite.Shader = PrestoSprite.ShadingVersion.Ver2;
-            }
+            // Change Shader
+            //if (currKeyState.IsKeyDown(Keys.D1)) {
+            //    sprite.Shader = PrestoSprite.ShadingVersion.Ver1;
+            //}
+            //if (currKeyState.IsKeyDown(Keys.D2)) {
+            //    sprite.Shader = PrestoSprite.ShadingVersion.Ver2;
+            //}
+
+            // Zoom
             if (currKeyState.IsKeyDown(Keys.Up) && !prevKeyState.IsKeyDown(Keys.Up)) {
                 keyboardZoom--;
             }
             if (currKeyState.IsKeyDown(Keys.Down) && !prevKeyState.IsKeyDown(Keys.Down)) {
                 keyboardZoom++;
             }
-            prevKeyState = currKeyState;
-
-            int zoomValue = Mouse.GetState().ScrollWheelValue / -120;
-
+            int zoomValue = currMouseState.ScrollWheelValue / -120;
             scale = BASE_SCALE / (float) Math.Pow(2.0, zoomValue + keyboardZoom);
 
+            // Tooltips
+            if (cMapDrop.Contains(x, y)) {
+                tooltip = CMAP_TEXT;
+            } else if (hMapDrop.Contains(x, y)) {
+                tooltip = HMAP_TEXT;
+            } else if (paletteDrop.Contains(x, y)) {
+                tooltip = PALETTE_TEXT;
+            } else if (pMapHover.Contains(x, y)) {
+                tooltip = PMAP_TEXT;
+            } else if (nMapHover.Contains(x, y)) {
+                tooltip = NMAP_TEXT;
+            } else {
+                tooltip = "";
+            }
+
+            // Light Lock
+            if (currMouseState.RightButton == ButtonState.Pressed &&
+                !(prevMouseState.RightButton == ButtonState.Pressed)) {
+                lightLock = !lightLock;
+            }
+
+            // Update Light Dir
+            if (!lightLock) {
+                lightDir = new Vector3(currMouseState.X - spritePos.X, currMouseState.Y - spritePos.Y, 128.0f);
+                lightDir.Normalize();
+            }
+
+            // Update Background Color
+            if (currKeyState.IsKeyDown(Keys.Space) && !prevKeyState.IsKeyDown(Keys.Space)) {
+                invertColor = !invertColor;
+            }
+
+            // Toggle Help
+            if (currKeyState.IsKeyDown(Keys.OemQuestion) && !prevKeyState.IsKeyDown(Keys.OemQuestion)) {
+                viewHelp = !viewHelp;
+            }
+
+            prevKeyState = currKeyState;
+            prevMouseState = currMouseState;
             base.Update(gameTime);
         }
 
@@ -318,7 +397,12 @@ namespace PrestoViewer
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime) {
-            GraphicsDevice.Clear(Color.AntiqueWhite);
+            int w = GraphicsDevice.Viewport.Width;
+            int h = GraphicsDevice.Viewport.Height;
+            MouseState ms = Mouse.GetState();
+
+            GraphicsDevice.Clear(colors[invertColor ? 1 : 0]);
+            Color textColor = colors[invertColor ? 0 : 1];
 
             spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.Default, RasterizerState.CullNone);
 
@@ -337,15 +421,33 @@ namespace PrestoViewer
             Vector2 paletteOrigin = new Vector2(sprite.Palette.Width / 2.0f, sprite.Palette.Height / 2.0f);
             spriteBatch.Draw(sprite.Palette, palettePos, null, Color.White, 0.0f, paletteOrigin, 3.0f * scale, SpriteEffects.None, 0.0f);
 
-            Vector3 lightDir = new Vector3(Mouse.GetState().X - spritePos.X, Mouse.GetState().Y - spritePos.Y, 128.0f);
-            lightDir.Normalize();
-            spriteBatch.DrawString(font, "Light: " + lightDir, Vector2.Zero, Color.Black);
+            spriteBatch.DrawString(font, "Light: " + lightDir, Vector2.Zero, textColor);
+            if (lightLock) {
+                spriteBatch.DrawString(font, "Light direction locked, right-click to unlock", new Vector2(0, font.LineSpacing), textColor);
+            }
+            spriteBatch.DrawString(font, "Press ? For Help", new Vector2(0, h - font.LineSpacing), textColor);
 
             Vector2 spriteOrigin = new Vector2(sprite.CMap.Width / 2.0f, sprite.CMap.Height / 2.0f);
-
             sprite.draw(spriteBatch, spritePos, spriteOrigin, scale, lightDir);
 
             spriteBatch.End();
+
+            // Draw Tooltip
+            if (viewHelp) {
+                int margin = 80;
+                spriteBatch.Begin();
+                Rectangle tooltipBackground = new Rectangle(margin / 2, margin / 2, w - margin, h - margin);
+                spriteBatch.Draw(WHITE_BOX, tooltipBackground, new Color(0.1f, 0.1f, 0.1f, 0.90f));
+                spriteBatch.DrawString(font, HELP_TEXT, new Vector2(margin, margin), Color.AntiqueWhite);
+                spriteBatch.End();
+            } else if (tooltip != "") {
+                spriteBatch.Begin();
+                Vector2 tooltipSize = font.MeasureString(tooltip);
+                Rectangle tooltipBackground = new Rectangle(ms.X - 20, ms.Y + 20, (int)tooltipSize.X + 4, (int)tooltipSize.Y + 4);
+                spriteBatch.Draw(WHITE_BOX, tooltipBackground, new Color(0.2f, 0.2f, 0.2f, 0.85f));
+                spriteBatch.DrawString(font, tooltip, new Vector2(ms.X - 18, ms.Y + 22), Color.AntiqueWhite);
+                spriteBatch.End();
+            }
 
             base.Draw(gameTime);
         }
