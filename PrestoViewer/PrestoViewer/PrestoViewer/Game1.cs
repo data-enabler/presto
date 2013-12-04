@@ -406,17 +406,17 @@ namespace PrestoViewer
 
             spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.Default, RasterizerState.CullNone);
 
-            Vector2 cMapOrigin = new Vector2(sprite.CMap.Width / 2.0f, sprite.CMap.Height / 2.0f);
-            spriteBatch.Draw(sprite.CMap, cMapPos, null, Color.White, 0.0f, cMapOrigin, scale, SpriteEffects.None, 0.0f);
-
             Vector2 pMapOrigin = new Vector2(sprite.CMap.Width / 2.0f, sprite.CMap.Height / 2.0f);
             spriteBatch.Draw(sprite.PMap, pMapPos, null, Color.White, 0.0f, pMapOrigin, scale, SpriteEffects.None, 0.0f);
 
-            Vector2 hMapOrigin = new Vector2(sprite.HMap.Width / 2.0f, sprite.HMap.Height / 2.0f);
-            spriteBatch.Draw(sprite.HMap, hMapPos, null, Color.White, 0.0f, hMapOrigin, scale, SpriteEffects.None, 0.0f);
-
             Vector2 nMapOrigin = new Vector2(sprite.HMap.Width / 2.0f, sprite.HMap.Height / 2.0f);
             spriteBatch.Draw(sprite.NMap, nMapPos, null, Color.White, 0.0f, nMapOrigin, scale, SpriteEffects.None, 0.0f);
+
+            Vector2 cMapOrigin = new Vector2(sprite.CMap.Width / 2.0f, sprite.CMap.Height / 2.0f);
+            spriteBatch.Draw(sprite.CMap, cMapPos, null, Color.White, 0.0f, cMapOrigin, scale, SpriteEffects.None, 0.0f);
+
+            Vector2 hMapOrigin = new Vector2(sprite.HMap.Width / 2.0f, sprite.HMap.Height / 2.0f);
+            spriteBatch.Draw(sprite.HMap, hMapPos, null, Color.White, 0.0f, hMapOrigin, scale, SpriteEffects.None, 0.0f);
 
             Vector2 paletteOrigin = new Vector2(sprite.Palette.Width / 2.0f, sprite.Palette.Height / 2.0f);
             spriteBatch.Draw(sprite.Palette, palettePos, null, Color.White, 0.0f, paletteOrigin, 3.0f * scale, SpriteEffects.None, 0.0f);
